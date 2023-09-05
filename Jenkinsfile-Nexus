@@ -1,0 +1,24 @@
+    def userGit = "bibee"
+    def repository = "https://github.com/jenkins-docs/simple-java-maven-app"
+    def branch = "master"
+    node("jenkins-agent") {
+            stage("Pull code from GitLab"){
+                    git branch: "${branch}", credentialsId: "${userGit}", url: "${repository}"
+            }
+            stage("Edit Snapshot to Release") {
+                 sh "sed -i 's/1.0-SNAPSHOT/1.0/g' pom.xml"
+            }
+            stage("Build"){
+                env.mavenTool = tool name: 'Maven3.9.4', type: 'maven'
+                sh "${mavenTool}/bin/mvn -B -DskipTests clean package"
+
+            }
+            stage("Test"){
+                sh "${mavenTool}/bin/mvn test"
+
+            }
+            stage ('Publishing') {
+                nexusPublisher nexusInstanceId: 'nexus_jenkins', nexusRepositoryId: 'jenkins-test', packages: [[$class: 'MavenPackage', mavenAssetList: [[classifier: '', extension: '', filePath: 'target/my-app-1.0.jar']], mavenCoordinate: [artifactId: 'my-app', groupId: 'com.mycompany.app', packaging: 'jar', version: '1.0']]]
+            }
+ 
+}
